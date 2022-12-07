@@ -1,7 +1,7 @@
 "use strict";
 
 const db = require("../db");
-const { BadRequestError, NotFoundError } = require("../expressError");
+const { BadRequestError, NotFoundError, ExpressError } = require("../expressError");
 const { sqlForPartialUpdate } = require("../helpers/sql");
 
 /** Related functions for companies. */
@@ -44,21 +44,64 @@ class Company {
     return company;
   }
 
-  /** Find all companies.
+  /** Find all companies. 
+   **Optional filters on filter
    *
+   * filter 
+   * - minEmployees
+   * - maxEmployees
+   * - name (ILIKE)
+   * 
+   * Do this by making WHERE query optional (if else)
+   * minEmployees -- `num_employees >= #`
+   * maxEmployees -- `num_employees <= #`
+   * name -- `name ILIKE `
+   * 
    * Returns [{ handle, name, description, numEmployees, logoUrl }, ...]
+   * 
    * */
 
-  static async findAll() {
-    const companiesRes = await db.query(
+  static async findAll(filters = {}) {
+    const query = (
       `SELECT handle,
                   name,
                   description,
                   num_employees AS "numEmployees",
                   logo_url AS "logoUrl"
-           FROM companies
-           ORDER BY name`);
-    return companiesRes.rows;
+           FROM companies`);
+    let whereExpressions = [] // push expressions to WHERE query 
+    let queryValues = [] // push values like $1, $2, etc. 
+
+    const { minEmployees, maxEmployees, name } = filters
+
+    if (minEmployees > maxEmployees) {
+      throw new BadRequestError("Min employees can't be greater than max.")
+    }
+    // For each possible search term, 
+    // add to whereExpressions and queryValues
+    if (minEmployees !== undefined) {
+      queryValues.push(minEmployees)
+      whereExpressions.push(`num_employees <= $${queryValues.length}`)
+    }
+
+    if (maxEmployees !== undefined) {
+      queryValues.push(maxEmployees)
+      whereExpressions.push(`num_employees <= $${queryValues.length}`)
+    }
+
+    if (name) {
+      queryValues.push(`%${name}%`)
+      whereExpressions.push(`name ILIKE $${queryValues.length}`)
+    }
+
+    if (whereExpressions.length > 0) {
+      query += " WHERE " + whereExpressions.join(" AND ")
+    }
+
+    query += "ORDER BY name"
+    const companiesResults = await db.query(query, queryValues)
+
+    return companiesResults.rows;
   }
 
   /** Given a company handle, return data about company.
