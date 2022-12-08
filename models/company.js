@@ -62,7 +62,7 @@ class Company {
    * */
 
   static async findAll(filters = {}) {
-    const query = (
+    let query = (
       `SELECT handle,
                   name,
                   description,
@@ -81,7 +81,7 @@ class Company {
     // add to whereExpressions and queryValues
     if (minEmployees !== undefined) {
       queryValues.push(minEmployees)
-      whereExpressions.push(`num_employees <= $${queryValues.length}`)
+      whereExpressions.push(`num_employees >= $${queryValues.length}`)
     }
 
     if (maxEmployees !== undefined) {
@@ -95,10 +95,9 @@ class Company {
     }
 
     if (whereExpressions.length > 0) {
-      query += " WHERE " + whereExpressions.join(" AND ")
+      query += " WHERE " + whereExpressions.join(" AND ") + "ORDER BY name"
     }
 
-    query += "ORDER BY name"
     const companiesResults = await db.query(query, queryValues)
 
     return companiesResults.rows;
