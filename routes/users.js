@@ -116,7 +116,26 @@ router.delete("/:username", ensureCorrectUserOrAdmin, async function (req, res, 
   } catch (err) {
     return next(err);
   }
-});
+})
+
+/** POST /[username]/jobs/[id] 
+ * 
+ * Apply to Job; accepts username & jobId
+ * 
+ * Return {"applied": jobId}
+ * 
+ * Authorization required: admin or same-user-as-username
+*/
+router.post("/:username/jobs/:id", ensureCorrectUserOrAdmin, async (req, res, next) => {
+  try {
+    // get and convert 'id' string to int
+    const jobId = +req.params.id
+    await User.applyToJob(req.params.username, jobId)
+    return res.json({ applied: jobId })
+  } catch (e) {
+    return next(e)
+  }
+})
 
 
 module.exports = router;

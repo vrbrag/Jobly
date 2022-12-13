@@ -12,7 +12,9 @@ const {
   commonBeforeEach,
   commonAfterEach,
   commonAfterAll,
+  testJobIds,
 } = require("./_testCommon");
+const { fail } = require("assert");
 
 beforeAll(commonBeforeAll);
 beforeEach(commonBeforeEach);
@@ -140,6 +142,7 @@ describe("get", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
+      applications: [testJobIds[0]]
     });
   });
 
@@ -181,11 +184,11 @@ describe("update", function () {
       lastName: "U1L",
       email: "u1@email.com",
       isAdmin: false,
-    });
+    })
     const found = await db.query("SELECT * FROM users WHERE username = 'u1'");
     expect(found.rows.length).toEqual(1);
     expect(found.rows[0].password.startsWith("$2b$")).toEqual(true);
-  });
+  })
 
   test("not found if no such user", async function () {
     try {
@@ -196,7 +199,7 @@ describe("update", function () {
     } catch (err) {
       expect(err instanceof NotFoundError).toBeTruthy();
     }
-  });
+  })
 
   test("bad request if no data", async function () {
     expect.assertions(1);
@@ -204,10 +207,10 @@ describe("update", function () {
       await User.update("c1", {});
       fail();
     } catch (err) {
-      expect(err instanceof BadRequestError).toBeTruthy();
+      expect(err instanceof BadRequestError).toBeTruthy()
     }
-  });
-});
+  })
+})
 
 /************************************** remove */
 
@@ -215,16 +218,50 @@ describe("remove", function () {
   test("works", async function () {
     await User.remove("u1");
     const res = await db.query(
-        "SELECT * FROM users WHERE username='u1'");
+      "SELECT * FROM users WHERE username='u1'");
     expect(res.rows.length).toEqual(0);
-  });
+  })
 
   test("not found if no such user", async function () {
     try {
       await User.remove("nope");
       fail();
     } catch (err) {
-      expect(err instanceof NotFoundError).toBeTruthy();
+      expect(err instanceof NotFoundError).toBeTruthy()
     }
-  });
-});
+  })
+})
+
+/************************************** applyToJob */
+
+describe("applyToJob", function () {
+  test("works", async function () {
+    await User.applyToJob("u1", testJobIds[1])
+
+    const res = await db.query(
+      `SELECT * FROM applications WHERE job_id=$1`, [testJobIds[1]]
+    )
+    expect(res.rows).toEqual([{
+      job_id: testJobIds[1],
+      username: "u1"
+    }])
+  })
+  // 
+  test("Not Found if no job exists", async function () {
+    try {
+      await User.applyToJob("u1", 0)
+      fail()
+    } catch (e) {
+      expect(e instanceof NotFoundError).toBeTruthy()
+    }
+  })
+
+  test("not found if no such user", async function () {
+    try {
+      await User.applyToJob("wrong", testJobIds[0])
+      fail()
+    } catch (err) {
+      expect(err instanceof NotFoundError).toBeTruthy()
+    }
+  })
+})

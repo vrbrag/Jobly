@@ -13,7 +13,8 @@ const {
   commonAfterAll,
   u1Token,
   u2Token,
-  adminToken
+  adminToken,
+  testJobIds
 } = require("./_testCommon");
 const { patch } = require("superagent");
 
@@ -205,6 +206,7 @@ describe("GET /users/:username", function () {
         lastName: "U1L",
         email: "user1@user.com",
         isAdmin: false,
+        applications: [testJobIds[0]],
       },
     });
   });
@@ -221,6 +223,7 @@ describe("GET /users/:username", function () {
         lastName: "U1L",
         email: "user1@user.com",
         isAdmin: false,
+        applications: [testJobIds[0]],
       },
     });
   })
@@ -386,3 +389,45 @@ describe("DELETE /users/:username", function () {
     expect(resp.statusCode).toEqual(404);
   });
 });
+
+// ++++++++++++++++++++ (added )
+/************************************** POST /:username/jobs/:id 
+ * Apply to Job
+*/
+
+describe("/:username/jobs/:id", function () {
+  test("works", async () => {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[1]}`)
+      .set("authorization", `Bearer ${adminToken}`)
+    expect(resp.body).toEqual({ applied: testJobIds[1] })
+  })
+
+  test("works for same user", async function () {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[1]}`)
+      .set("authorization", `Bearer ${u1Token}`)
+    expect(resp.body).toEqual({ applied: testJobIds[1] })
+  })
+
+  test("unauth for others", async function () {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[1]}`)
+      .set("authorization", `Bearer ${u2Token}`)
+    expect(resp.statusCode).toEqual(401)
+  })
+
+  test("unauth for anon", async function () {
+    const resp = await request(app)
+      .post(`/users/u1/jobs/${testJobIds[1]}`)
+    expect(resp.statusCode).toEqual(401)
+  })
+
+  test("not found for no such username", async function () {
+    const resp = await request(app)
+      .post(`/users/nope/jobs/${testJobIds[1]}`)
+      .set("authorization", `Bearer ${adminToken}`)
+    expect(resp.statusCode).toEqual(404)
+  })
+})
+// ++++++++++++++++++++
