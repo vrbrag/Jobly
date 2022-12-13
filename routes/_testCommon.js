@@ -71,7 +71,7 @@ async function commonBeforeAll() {
     title: "J2", salary: "2", equity: "0.2", companyHandle: "c1"
   })).id
   testJobIds[2] = (await Job.create({
-    title: "J3", salary: "3", equity: "0.3", companyHandle: "c1"
+    title: "J3", salary: "3", /* equity null */ companyHandle: "c1"
   })).id
 
   await User.applyToJob("u1", testJobIds[0])

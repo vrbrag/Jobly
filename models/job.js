@@ -36,19 +36,41 @@ class Job {
     * 
     * Returns [{id, title, salary, equity, companyHandle, companyName}]
     */
-   static async findAll() {
-      const result = await db.query(
-         `SELECT 
-            j.id,
-            j.title,
-            j.salary,
-            j.equity,
-            j.company_handle AS "companyHandle",
-            c.name AS "companyName"
-         FROM jobs j 
-         LEFT JOIN companies AS c ON c.handle = j.company_handle`
-      )
-      return result.rows
+   static async findAll({ minSalary, hasEquity, title } = {}) {
+      let query = `SELECT j.id,
+                        j.title,
+                        j.salary,
+                        j.equity,
+                        j.company_handle AS "companyHandle",
+                        c.name AS "companyName"
+                 FROM jobs j 
+                   LEFT JOIN companies AS c ON c.handle = j.company_handle`;
+      let whereExpressions = [];
+      let queryValues = [];
+
+      // For each search term, push the SQL expression to whereExpressions
+      // Push the input values of the search terms to queryValues
+      if (minSalary !== undefined) {
+         queryValues.push(minSalary);
+         whereExpressions.push(`salary >= $${queryValues.length}`);
+      }
+
+      if (hasEquity === true) {
+         whereExpressions.push(`equity > 0`);
+      }
+
+      if (title !== undefined) {
+         queryValues.push(`%${title}%`);
+         whereExpressions.push(`title ILIKE $${queryValues.length}`);
+      }
+      // Add where expressions to query
+      if (whereExpressions.length > 0) {
+         query += " WHERE " + whereExpressions.join(" AND ");
+      }
+
+      query += " ORDER BY title"
+      const jobsRes = await db.query(query, queryValues)
+      return jobsRes.rows
    }
 
    /** Using job id, return data about a job
